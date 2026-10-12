@@ -6,7 +6,6 @@ import {
   Check,
   ChevronRight,
   Clock,
-  Database,
   History,
   LayoutDashboard,
   MapPin,
@@ -16,7 +15,6 @@ import {
   ShieldAlert,
   Square,
   Truck,
-  Wifi,
   Zap,
 } from 'lucide-react'
 
@@ -93,10 +91,8 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [simulationRunning, setSimulationRunning] = useState(false)
   const [simulationComplete, setSimulationComplete] = useState(false)
-  const [simulationProgress, setSimulationProgress] = useState(0)
   const [currentPhase, setCurrentPhase] = useState('Ready')
   const [currentRecord, setCurrentRecord] = useState(null)
-  const [recordsProcessed, setRecordsProcessed] = useState(0)
   const [totalRecords, setTotalRecords] = useState(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -107,10 +103,8 @@ function App() {
     runIdRef.current += 1
     setSimulationRunning(false)
     setSimulationComplete(false)
-    setSimulationProgress(0)
     setCurrentPhase('Ready')
     setCurrentRecord(null)
-    setRecordsProcessed(0)
     setTotalRecords(0)
     setZoneRisk(null)
     setPrediction(null)
@@ -187,8 +181,6 @@ function App() {
     setNotice('')
     setSimulationRunning(true)
     setSimulationComplete(false)
-    setSimulationProgress(0)
-    setRecordsProcessed(0)
     setCurrentRecord(null)
     setZoneRisk(null)
     setPrediction(null)
@@ -229,19 +221,12 @@ function App() {
           }
 
           setCurrentRecord(record)
-          setRecordsProcessed((previous) => previous + 1)
-          setSimulationProgress(
-            Math.min(100, Math.round(((offset + 1) / total) * 100)),
-          )
 
           // Delay gives the operator time to see changing sensor readings.
           await new Promise((resolve) => setTimeout(resolve, 8))
         }
 
         offset += records.length
-        setSimulationProgress(
-          Math.min(100, Math.round((offset / total) * 100)),
-        )
       }
 
       if (runIdRef.current !== thisRun) return
@@ -278,7 +263,6 @@ function App() {
       setPrediction(predictionResult)
       setZoneRisk(normalizedRiskResult)
       setZoneData(groundTruth)
-      setSimulationProgress(100)
       setSimulationComplete(true)
       setCurrentPhase('Post-unload analysis complete')
       setNotice('Sensor replay and post-unload analysis completed.')
@@ -383,6 +367,10 @@ function App() {
         </nav>
 
         <div className="top-actions">
+          <div className="top-connection" title="Backend API connection status">
+            <span className={`status-dot ${health?.status === 'healthy' ? 'online' : ''}`} />
+            <span>{health?.status === 'healthy' ? 'API CONNECTED' : 'CHECKING API'}</span>
+          </div>
           <span className="clock">
             <Clock size={13} />
             {new Date().toLocaleTimeString([], {
@@ -450,29 +438,25 @@ function App() {
               </div>
 
               <div className="simulation-controls">
-                <button
-                  className="execute-button"
-                  onClick={startSimulation}
-                  disabled={simulationRunning || loading}
-                >
-                  <Play size={15} />
-                  {simulationRunning ? 'SIMULATION RUNNING…' : 'START SIMULATION'}
-                </button>
-                {simulationRunning && (
-                  <button className="icon-button" onClick={stopSimulation} title="Stop simulation">
-                    <Square size={15} />
+                <div className="simulation-action">
+                  <button
+                    className="execute-button"
+                    onClick={startSimulation}
+                    disabled={simulationRunning || loading}
+                  >
+                    <Play size={15} />
+                    {simulationRunning ? 'SIMULATION RUNNING…' : 'START SIMULATION'}
                   </button>
-                )}
-                <span className="phase-label">{currentPhase}</span>
-              </div>
-
-              <div className="simulation-progress">
-                <div className="progress-track">
-                  <div style={{ width: `${simulationProgress}%` }} />
+                  {simulationRunning && (
+                    <button className="icon-button" onClick={stopSimulation} title="Stop simulation">
+                      <Square size={15} />
+                    </button>
+                  )}
                 </div>
-                <span>
-                  {simulationProgress}% · {recordsProcessed.toLocaleString()} / {totalRecords.toLocaleString()} records
-                </span>
+                <div className="phase-status">
+                  <span className="phase-heading">CURRENT TRUCK PHASE</span>
+                  <span className="phase-label">{currentPhase}</span>
+                </div>
               </div>
 
               <div className="payload-stage">
@@ -532,16 +516,6 @@ function App() {
                 </div>
               </div>
 
-              <div className="map-legend">
-                <span><i className="legend-green" /> Lower relative score</span>
-                <span><i className="legend-yellow" /> Moderate relative score</span>
-                <span><i className="legend-red" /> Higher relative score</span>
-              </div>
-              <p className="muted heatmap-disclaimer">
-                Zone scores compare post-unload acceleration magnitude with the empty-bed baseline.
-                They are experimental sensor indicators, not proof of retained material.
-                The recorded ground-truth zone is marked separately after analysis.
-              </p>
             </section>
 
             <aside className="right-column">
@@ -613,15 +587,6 @@ function App() {
                 </div>
               </section>
 
-              <section className="panel connection-panel">
-                <div className="connection-status">
-                  <span className={`status-dot ${health?.status === 'healthy' ? 'online' : ''}`} />
-                  <strong>BACKEND CONNECTION</strong>
-                </div>
-                <p><Wifi size={14} /> {health?.status === 'healthy' ? 'API connected' : 'Checking connection'}</p>
-                <p><Database size={14} /> {health?.total_trips ?? 0} trips available</p>
-                <p><Activity size={14} /> {totalRecords.toLocaleString()} records in selected trip</p>
-              </section>
             </aside>
           </main>
 
