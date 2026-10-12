@@ -11,7 +11,6 @@ import {
   MapPin,
   Play,
   RefreshCw,
-  Settings,
   ShieldAlert,
   Square,
   Truck,
@@ -350,7 +349,6 @@ function App() {
           {[
             { name: 'Dashboard', icon: LayoutDashboard },
             { name: 'Trip History', icon: History },
-            { name: 'Settings', icon: Settings },
           ].map((item) => {
             const Icon = item.icon
             return (
@@ -421,6 +419,23 @@ function App() {
             <Metric label="RECORDED SEVERITY" tone="red" icon={<Activity size={14} />}>
               {simulationComplete ? actualSeverity : '—'}
             </Metric>
+          </section>
+
+          <section className="panel live-panel">
+            <div className="panel-heading">
+              <h2>LIVE SENSOR REPLAY</h2>
+              <span className="panel-subtitle">
+                {currentRecord ? `Current phase: ${getPhase(currentRecord) || 'unknown'}` : 'No active reading'}
+              </span>
+            </div>
+            <div className="live-readings">
+              <div><span>Remaining/load weight</span><strong>{getLiveValue(['weight_kg', 'weight'])} kg</strong></div>
+              <div><span>IMU acceleration X</span><strong>{getLiveValue(['accel_x_g'])} g</strong></div>
+              <div><span>IMU acceleration Y</span><strong>{getLiveValue(['accel_y_g'])} g</strong></div>
+              <div><span>IMU acceleration Z</span><strong>{getLiveValue(['accel_z_g'])} g</strong></div>
+              <div><span>Angular velocity X</span><strong>{getLiveValue(['gyro_x_dps'])} °/s</strong></div>
+              <div><span>Sensor timestamp</span><strong>{currentRecord?.timestamp ?? '—'}</strong></div>
+            </div>
           </section>
 
           <main className="dashboard-grid">
@@ -590,23 +605,6 @@ function App() {
             </aside>
           </main>
 
-          <section className="panel live-panel">
-            <div className="panel-heading">
-              <h2>LIVE SENSOR REPLAY</h2>
-              <span className="panel-subtitle">
-                {currentRecord ? `Current phase: ${getPhase(currentRecord) || 'unknown'}` : 'No active reading'}
-              </span>
-            </div>
-            <div className="live-readings">
-              <div><span>Remaining/load weight</span><strong>{getLiveValue(['weight_kg', 'weight'])} kg</strong></div>
-              <div><span>IMU acceleration X</span><strong>{getLiveValue(['accel_x_g'])} g</strong></div>
-              <div><span>IMU acceleration Y</span><strong>{getLiveValue(['accel_y_g'])} g</strong></div>
-              <div><span>IMU acceleration Z</span><strong>{getLiveValue(['accel_z_g'])} g</strong></div>
-              <div><span>Angular velocity X</span><strong>{getLiveValue(['gyro_x_dps'])} °/s</strong></div>
-              <div><span>Sensor timestamp</span><strong>{currentRecord?.timestamp ?? '—'}</strong></div>
-            </div>
-          </section>
-
           <section className="panel trip-strip">
             <div className="panel-heading">
               <h2>TRIP SELECTOR</h2>
@@ -638,7 +636,7 @@ function App() {
             </div>
           </section>
         </>
-      ) : page === 'Trip History' ? (
+      ) : (
         <main className="simple-page panel">
           <h2>Trip History</h2>
           <p className="muted">Choose a recorded trip and run its sensor simulation.</p>
@@ -659,16 +657,6 @@ function App() {
               </button>
             ))}
           </div>
-        </main>
-      ) : (
-        <main className="simple-page panel">
-          <h2>Settings</h2>
-          <p className="muted">CARRYX simulation configuration</p>
-          <div className="setting-row"><span>Backend API</span><code>http://127.0.0.1:8000</code></div>
-          <div className="setting-row"><span>Sensor data</span><strong>Recorded simulated sensor data</strong></div>
-          <div className="setting-row"><span>Trip model</span><strong>Existing saved Random Forest model</strong></div>
-          <div className="setting-row"><span>Zone map</span><strong>Relative sensor-change scores</strong></div>
-          <div className="setting-row"><span>Physical hardware</span><strong>Not connected — simulation only</strong></div>
         </main>
       )}
 
