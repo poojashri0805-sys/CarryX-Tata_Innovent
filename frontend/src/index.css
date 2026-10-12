@@ -85,6 +85,9 @@ button:disabled { cursor: wait; opacity: .6; }
 .view-switch button { border: 0; border-radius: 5px; padding: 5px 9px; color: #697589; background: transparent; font-size: 8px; font-weight: 700; }
 .view-switch button.active { background: #eff3f7; color: #243349; }
 .payload-stage { margin-top: 14px; padding: 20px; border: 1px solid #e5ece8; border-radius: 9px; background: linear-gradient(145deg, #f7faf8, #f0f5f2); }
+.visualization-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 2px 10px; color: #6e827b; font-size: 8px; font-weight: 800; letter-spacing: .55px; }
+.visualization-heading span:last-child { overflow: hidden; color: #16734d; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.truck-visualization { height: 370px; overflow: hidden; border: 1px solid #dfeae5; border-radius: 8px; background: #f7faf9; }
 .payload-map { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, minmax(112px, 1fr)); gap: 9px; padding: 12px; background: white; border: 1px solid #e5e9ed; border-radius: 9px; box-shadow: 0 1px 2px #10182808; }
 .zone { min-width: 0; min-height: 0; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 7px; border: 1px solid transparent; border-radius: 8px; text-align: center; transition: filter .15s, transform .15s, box-shadow .15s; }
 .zone:hover { filter: saturate(1.1); transform: translateY(-1px); }
@@ -189,6 +192,7 @@ button:disabled { cursor: wait; opacity: .6; }
   .history-entry { padding: 16px; }
   .payload-panel { padding: 10px; }
   .payload-stage { padding: 7px; }
+  .truck-visualization { height: 270px; }
   .payload-map { grid-template-rows: repeat(3, minmax(86px, 1fr)); gap: 6px; padding: 6px; }
   .zone { min-height: 86px; }
   .zone-wide { min-height: 86px; }

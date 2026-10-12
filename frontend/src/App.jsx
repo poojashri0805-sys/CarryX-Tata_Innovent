@@ -1,5 +1,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js'
 import {
   Activity,
   AlertTriangle,
@@ -74,6 +78,190 @@ function getRiskClass(level) {
   if (level === 'moderate') return 'zone-yellow'
   if (level === 'low') return 'zone-green'
   return 'zone-neutral'
+}
+
+function createFallbackTruck() {
+  const truck = new THREE.Group()
+  const bodyMaterial = new THREE.MeshStandardMaterial({ color: '#177447', roughness: 0.7 })
+  const darkMaterial = new THREE.MeshStandardMaterial({ color: '#263832', roughness: 0.8 })
+  const glassMaterial = new THREE.MeshStandardMaterial({ color: '#a9d5d0', roughness: 0.25 })
+
+  const addBox = (size, position, material) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material)
+    mesh.position.set(...position)
+    mesh.castShadow = true
+    mesh.receiveShadow = true
+    truck.add(mesh)
+  }
+
+  addBox([3.7, 0.55, 1.55], [0, 0.75, 0], bodyMaterial)
+  addBox([1.15, 1.25, 1.45], [1.2, 1.45, 0], bodyMaterial)
+  addBox([0.7, 0.5, 1.48], [1.2, 1.68, 0], glassMaterial)
+  addBox([1.8, 1.25, 1.5], [-0.85, 1.35, 0], bodyMaterial)
+
+  for (const x of [-1.25, 1.25]) {
+    for (const z of [-0.82, 0.82]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.22, 24), darkMaterial)
+      wheel.rotation.x = Math.PI / 2
+      wheel.position.set(x, 0.45, z)
+      wheel.castShadow = true
+      truck.add(wheel)
+    }
+  }
+
+  return truck
+}
+
+function TruckVisualization({ phase }) {
+  const mountRef = useRef(null)
+  const phaseRef = useRef(phase)
+
+  useEffect(() => {
+    phaseRef.current = phase
+  }, [phase])
+
+  useEffect(() => {
+    const mount = mountRef.current
+    if (!mount) return undefined
+
+    const scene = new THREE.Scene()
+    scene.background = new THREE.Color('#f7faf9')
+
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 1000)
+    camera.position.set(5.8, 3.9, 6.4)
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.outputColorSpace = THREE.SRGBColorSpace
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    mount.appendChild(renderer.domElement)
+
+    const controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.enablePan = false
+    controls.minDistance = 3.5
+    controls.maxDistance = 11
+    controls.target.set(0, 0.8, 0)
+
+    scene.add(new THREE.HemisphereLight('#ffffff', '#b9cfc5', 2.2))
+    const keyLight = new THREE.DirectionalLight('#ffffff', 3.2)
+    keyLight.position.set(4, 8, 5)
+    keyLight.castShadow = true
+    scene.add(keyLight)
+
+    const ground = new THREE.Mesh(
+      new THREE.CircleGeometry(5.8, 64),
+      new THREE.MeshStandardMaterial({ color: '#e8efec', roughness: 1 }),
+    )
+    ground.rotation.x = -Math.PI / 2
+    ground.position.y = -0.02
+    ground.receiveShadow = true
+    scene.add(ground)
+
+    const grid = new THREE.GridHelper(11, 22, '#c7d9d1', '#dfeae5')
+    grid.position.y = 0
+    scene.add(grid)
+
+    let truck = createFallbackTruck()
+    let dumpBox = null
+    let rubble = []
+    let frameId
+    scene.add(truck)
+
+    const loader = new GLTFLoader()
+    loader.setMeshoptDecoder(MeshoptDecoder)
+    loader.load('/models/CATERPILLAR_MINING_TRUCK.glb', (gltf) => {
+      scene.remove(truck)
+      truck = gltf.scene
+      truck.traverse((object) => {
+        if (!object.isMesh) return
+        object.castShadow = true
+        object.receiveShadow = true
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material]
+        const isBrandingMesh = materials.some((material) => {
+          const image = material.map?.image
+          return (
+            (image?.width === 1613 && image?.height === 1189) ||
+            (image?.width === 1637 && image?.height === 320)
+          )
+        })
+        if (isBrandingMesh) object.visible = false
+        const name = object.name.toLowerCase()
+        if (name.includes('id4_box')) dumpBox = object
+        if (name.includes('id8_rubble')) rubble.push(object)
+      })
+
+      truck.updateMatrixWorld(true)
+      const bounds = new THREE.Box3().setFromObject(truck)
+      const size = bounds.getSize(new THREE.Vector3())
+      const largestDimension = Math.max(size.x, size.y, size.z)
+      truck.scale.setScalar(4.4 / largestDimension)
+      truck.updateMatrixWorld(true)
+
+      const centeredBounds = new THREE.Box3().setFromObject(truck)
+      const centered = centeredBounds.getCenter(new THREE.Vector3())
+      truck.position.x -= centered.x
+      truck.position.z -= centered.z
+      truck.position.y += 0.18 - centeredBounds.min.y
+      truck.rotation.y = -0.52
+      scene.add(truck)
+      controls.target.set(0, 1.2, 0)
+      controls.update()
+    }, undefined, (error) => {
+      console.error('Failed to load detailed truck model:', error)
+    })
+
+    const resize = () => {
+      const width = mount.clientWidth
+      const height = mount.clientHeight
+      camera.aspect = width / height
+      camera.updateProjectionMatrix()
+      renderer.setSize(width, height, false)
+    }
+    resize()
+    const resizeObserver = new ResizeObserver(resize)
+    resizeObserver.observe(mount)
+
+    const animate = () => {
+      frameId = requestAnimationFrame(animate)
+      if (dumpBox) {
+        const phaseName = phaseRef.current.toLowerCase()
+        const targetTilt = phaseName.includes('unloading') ? -0.62 : 0
+        dumpBox.rotation.x = THREE.MathUtils.lerp(dumpBox.rotation.x, targetTilt, 0.06)
+      }
+      if (rubble.length) {
+        const hidden = phaseRef.current.toLowerCase().includes('post-unload')
+        rubble.forEach((part) => {
+          part.visible = !hidden
+        })
+      }
+      controls.update()
+      renderer.render(scene, camera)
+    }
+    animate()
+
+    return () => {
+      cancelAnimationFrame(frameId)
+      resizeObserver.disconnect()
+      controls.dispose()
+      renderer.dispose()
+      mount.removeChild(renderer.domElement)
+      scene.traverse((object) => {
+        if (!object.isMesh) return
+        object.geometry.dispose()
+        if (Array.isArray(object.material)) {
+          object.material.forEach((material) => material.dispose())
+        } else {
+          object.material.dispose()
+        }
+      })
+    }
+  }, [])
+
+  return <div ref={mountRef} className="truck-visualization" aria-label="3D truck phase visualization" />
 }
 
 function App() {
@@ -497,6 +685,11 @@ function App() {
               </div>
 
               <div className="payload-stage">
+                <div className="visualization-heading">
+                  <span>3D PHASE VISUALIZATION</span>
+                  <span>{currentPhase}</span>
+                </div>
+                <TruckVisualization phase={currentPhase} />
                 <div className="payload-map">
                   {ZONE_LAYOUT.map((zone) => {
                     const score = getZoneScore(zone.id)
