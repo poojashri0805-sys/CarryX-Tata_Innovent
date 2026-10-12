@@ -1,0 +1,1 @@
+data/table2_raw_sensor_data.csv filter=lfs diff=lfs merge=lfs -text
