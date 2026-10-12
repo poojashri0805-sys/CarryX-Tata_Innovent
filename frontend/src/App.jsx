@@ -4,7 +4,6 @@ import {
   Activity,
   AlertTriangle,
   Check,
-  ChevronRight,
   Clock,
   History,
   LayoutDashboard,
@@ -18,7 +17,6 @@ import {
 } from 'lucide-react'
 
 import {
-  getHealth,
   getTrips,
   getPrediction,
   getTripZones,
@@ -79,12 +77,12 @@ function getRiskClass(level) {
 }
 
 function App() {
-  const [health, setHealth] = useState(null)
   const [trips, setTrips] = useState([])
   const [tripId, setTripId] = useState('TRIP_0001')
   const [prediction, setPrediction] = useState(null)
   const [zoneData, setZoneData] = useState(null)
   const [zoneRisk, setZoneRisk] = useState(null)
+  const [simulationHistory, setSimulationHistory] = useState([])
   const [page, setPage] = useState('Dashboard')
 
   const [loading, setLoading] = useState(false)
@@ -135,12 +133,7 @@ function App() {
     setLoading(true)
 
     try {
-      const [healthData, tripResult] = await Promise.all([
-        getHealth(),
-        getTrips(),
-      ])
-
-      setHealth(healthData)
+      const tripResult = await getTrips()
       const availableTrips = tripResult.trips || []
       setTrips(availableTrips)
 
@@ -265,6 +258,25 @@ function App() {
       setSimulationComplete(true)
       setCurrentPhase('Post-unload analysis complete')
       setNotice('Sensor replay and post-unload analysis completed.')
+      const tripDetails = trips.find((trip) => trip.trip_id === tripId)
+      const detectedCarryback = predictionResult?.prediction === 1
+      setSimulationHistory((history) => [
+        {
+          id: `${tripId}-${Date.now()}`,
+          tripId,
+          truckId: tripDetails?.truck_id ?? 'Unknown truck',
+          modelResult: detectedCarryback ? 'CARRYBACK' : 'NOT DETECTED',
+          severity: groundTruth?.severity
+            ? String(groundTruth.severity).toUpperCase()
+            : 'NOT EVALUATED',
+          recommendedAction:
+            groundTruth?.recommended_action ??
+            (detectedCarryback ? 'Inspect the truck bed' : 'Review the sensor report'),
+          recommendedActionDetail: groundTruth?.recommended_action_detail ?? '',
+          simulatedAt: new Date().toISOString(),
+        },
+        ...history,
+      ])
     } catch (err) {
       if (runIdRef.current !== thisRun) return
       setError(
@@ -278,7 +290,7 @@ function App() {
         setSimulationRunning(false)
       }
     }
-  }, [tripId])
+  }, [tripId, trips])
 
   const detected = prediction?.prediction === 1
   const risk = prediction
@@ -339,9 +351,6 @@ function App() {
           </div>
           <div>
             <div className="brand-name">CARRYX</div>
-            <div className="operational">
-              <span /> SIMULATION ENVIRONMENT
-            </div>
           </div>
         </div>
 
@@ -365,10 +374,6 @@ function App() {
         </nav>
 
         <div className="top-actions">
-          <div className="top-connection" title="Backend API connection status">
-            <span className={`status-dot ${health?.status === 'healthy' ? 'online' : ''}`} />
-            <span>{health?.status === 'healthy' ? 'API CONNECTED' : 'CHECKING API'}</span>
-          </div>
           <span className="clock">
             <Clock size={13} />
             {new Date().toLocaleTimeString([], {
@@ -398,6 +403,23 @@ function App() {
 
       {page === 'Dashboard' ? (
         <>
+          <section className="dashboard-intro">
+            <div className="dashboard-intro-copy">
+              <span className="dashboard-eyebrow">FIELD OPERATIONS · CARRYBACK DETECTION</span>
+              <h1>Truck-bed intelligence</h1>
+              <p>Live sensor replay and post-unload insights, all in one place.</p>
+            </div>
+            <div className="intro-trip-card">
+              <span>SELECTED TRIP</span>
+              <strong>{tripId}</strong>
+              <small>{trips.find((trip) => trip.trip_id === tripId)?.truck_id ?? 'Truck details loading'}</small>
+            </div>
+            <div className={`intro-live-status ${simulationRunning ? 'is-running' : ''}`}>
+              <span />
+              {simulationRunning ? 'SIMULATION LIVE' : 'MONITORING READY'}
+            </div>
+          </section>
+
           <section className="metrics">
             <Metric label="MODEL RESULT" tone="pink" icon={<ShieldAlert size={14} />}>
               {!simulationComplete
@@ -406,7 +428,7 @@ function App() {
                   ? 'CARRYBACK'
                   : 'NOT DETECTED'}
             </Metric>
-            <Metric label="RECORDED RESIDUAL" tone="orange" icon={<Truck size={14} />}>
+            <Metric label="RECORDED RESIDUAL" tone="yellow" icon={<Truck size={14} />}>
               {simulationComplete && retainedMass != null
                 ? `${formatNumber(retainedMass)} KG`
                 : '—'}
@@ -639,23 +661,51 @@ function App() {
       ) : (
         <main className="simple-page panel">
           <h2>Trip History</h2>
-          <p className="muted">Choose a recorded trip and run its sensor simulation.</p>
+          <p className="muted">Completed truck simulations and their results.</p>
           <div className="history-list">
-            {trips.map((trip) => (
-              <button
-                key={trip.trip_id}
-                onClick={async () => {
-                  setPage('Dashboard')
-                  await loadTrip(trip.trip_id)
-                }}
-              >
-                <span>
-                  <strong>{trip.trip_id}</strong>
-                  <small>{trip.truck_id} · {trip.material_type}</small>
-                </span>
-                <span>{Number(trip.payload_kg).toLocaleString()} kg <ChevronRight size={15} /></span>
-              </button>
-            ))}
+            {simulationHistory.length === 0 ? (
+              <p className="history-empty">
+                No simulations yet. Run a truck trip from the Dashboard to add it here.
+              </p>
+            ) : (
+              simulationHistory.map((record) => (
+                <article
+                  className={`history-entry ${record.modelResult === 'CARRYBACK' ? 'history-entry-alert' : ''}`}
+                  key={record.id}
+                >
+                  <div className="history-entry-heading">
+                    <div>
+                      <strong>{record.tripId}</strong>
+                      <small>{record.truckId}</small>
+                    </div>
+                    <time dateTime={record.simulatedAt}>
+                      {new Date(record.simulatedAt).toLocaleString()}
+                    </time>
+                  </div>
+                  <div className="history-entry-results">
+                    <div>
+                      <span>Model result</span>
+                      <strong className={`history-result ${record.modelResult === 'CARRYBACK' ? 'history-result-alert' : 'history-result-clear'}`}>
+                        {record.modelResult}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Recorded severity</span>
+                      <strong className={`history-severity severity-${record.severity.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {record.severity}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Recommended action</span>
+                      <strong>{record.recommendedAction}</strong>
+                      {record.recommendedActionDetail && (
+                        <small>{record.recommendedActionDetail}</small>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </main>
       )}
