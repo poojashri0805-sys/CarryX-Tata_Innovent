@@ -85,6 +85,9 @@ button:disabled { cursor: wait; opacity: .6; }
 .view-switch button { border: 0; border-radius: 5px; padding: 5px 9px; color: #697589; background: transparent; font-size: 8px; font-weight: 700; }
 .view-switch button.active { background: #eff3f7; color: #243349; }
 .payload-stage { margin-top: 14px; padding: 20px; border: 1px solid #e5ece8; border-radius: 9px; background: linear-gradient(145deg, #f7faf8, #f0f5f2); }
+.visualization-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 2px 10px; color: #6e827b; font-size: 8px; font-weight: 800; letter-spacing: .55px; }
+.visualization-heading span:last-child { overflow: hidden; color: #16734d; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+.truck-visualization { height: 370px; overflow: hidden; border: 1px solid #dfeae5; border-radius: 8px; background: #f7faf9; }
 .payload-map { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, minmax(112px, 1fr)); gap: 9px; padding: 12px; background: white; border: 1px solid #e5e9ed; border-radius: 9px; box-shadow: 0 1px 2px #10182808; }
 .zone { min-width: 0; min-height: 0; height: 100%; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 7px; border: 1px solid transparent; border-radius: 8px; text-align: center; transition: filter .15s, transform .15s, box-shadow .15s; }
 .zone:hover { filter: saturate(1.1); transform: translateY(-1px); }
@@ -189,6 +192,7 @@ button:disabled { cursor: wait; opacity: .6; }
   .history-entry { padding: 16px; }
   .payload-panel { padding: 10px; }
   .payload-stage { padding: 7px; }
+  .truck-visualization { height: 270px; }
   .payload-map { grid-template-rows: repeat(3, minmax(86px, 1fr)); gap: 6px; padding: 6px; }
   .zone { min-height: 86px; }
   .zone-wide { min-height: 86px; }
@@ -383,4 +387,190 @@ button:disabled { cursor: wait; opacity: .6; }
   .panel-heading h2 { font-size: 13px; }
   .live-readings span { font-size: 10px; }
   .live-readings strong { font-size: 14px; }
+}
+
+/* 5-Phase Interactive Stepper Bar */
+.truck-viz-container {
+  position: relative;
+  width: 100%;
+}
+
+.phase-stepper-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  padding: 4px;
+  background: #f0f5f2;
+  border-radius: 9px;
+  border: 1px solid #dce8e2;
+}
+
+.phase-step-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: white;
+  color: #556860;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.35px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.phase-step-btn:hover:not(:disabled) {
+  background: #eaf3ed;
+  color: #16734d;
+  border-color: #bfe0cd;
+  transform: translateY(-1px);
+}
+
+.phase-step-btn.active {
+  background: #177447;
+  color: white;
+  border-color: #125e39;
+  box-shadow: 0 2px 7px rgba(23, 116, 71, 0.28);
+}
+
+.phase-step-btn:disabled {
+  cursor: default;
+  opacity: 0.88;
+}
+
+.phase-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.phase-step-btn.active .phase-step-num {
+  background: rgba(255, 255, 255, 0.28);
+  color: white;
+}
+
+/* 3D Telemetry HUD Overlay */
+.viz-hud-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.viz-hud-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(220, 235, 227, 0.9);
+  border-radius: 20px;
+  color: #172033;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.viz-hud-icon {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+
+.viz-hud-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #177447;
+}
+
+.viz-hud-desc {
+  font-size: 9px;
+  color: #697873;
+}
+
+.viz-hud-telemetry {
+  display: flex;
+  gap: 6px;
+}
+
+.viz-hud-metric {
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(220, 235, 227, 0.9);
+  border-radius: 14px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #556860;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.viz-hud-metric span {
+  color: #177447;
+  font-weight: 800;
+}
+
+.viz-hud-metric.danger {
+  border-color: rgba(220, 53, 69, 0.4);
+  background: rgba(255, 245, 245, 0.95);
+}
+
+.viz-hud-metric.danger span {
+  color: #c92a2a;
+  font-weight: 800;
+}
+
+.carryback-stepper-presets {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  pointer-events: auto;
+}
+
+.carryback-preset-btn {
+  padding: 3px 8px;
+  border: 1px solid #c9d8d0;
+  border-radius: 12px;
+  background: white;
+  color: #4a5953;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.carryback-preset-btn:hover {
+  background: #eef5f1;
+  color: #177447;
+  border-color: #177447;
+}
+
+.carryback-preset-btn.active {
+  background: #177447;
+  color: white;
+  border-color: #125e39;
+}
+
+.carryback-preset-btn.active.warn {
+  background: #c92a2a;
+  color: white;
+  border-color: #a61e1e;
 }
